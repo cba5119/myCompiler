@@ -328,7 +328,7 @@ int findFirstToken(int start, int end, string str) {
 }
 
 bool isMacth(string s1, string s2) {
-    if (("(" == s1 && ")" == s2) 
+    if (("(" == s1 && ")" == s2)
        || ("[" == s1 && "]" == s2)
        || ("{" == s1 && "}" == s2)) {
         return true;
@@ -337,18 +337,29 @@ bool isMacth(string s1, string s2) {
 }
 
 
-int findMacthIndex(int start, int end, int index) {
+int findMacthIndex(int start, int end) {
     int ret = -1;
-    
+    MYLOG("start %d   end %d\n", start, end);
     vector<string> bracketStack;
 
+    bracketStack.push_back(tokenVector[start].value);
 
-    for (int i = start; i <= end; i++) {
+    for (int i = start + 1; i <= end; i++) {
         if (isBracket(tokenVector[i].value)) {
-            
+            string str = bracketStack.back();
+            if (isMacth(str, tokenVector[i].value)) {
+                bracketStack.pop_back();
+            }
+            else {
+                bracketStack.push_back(tokenVector[i].value);
+            }
+        }
+
+        if (bracketStack.empty()) {
+            ret = i;
+            break;
         }
     }
-
 
     return ret;
 }
@@ -364,7 +375,7 @@ int dealWithCallFunction(int start, int end, string& str) {
 
 
 int dealWithExpressionList(int start, int end, string& str) {
-    MYLOG("start = \"%s\" end = \"%s\" \n", tokenVector[start].value.c_str(), tokenVector[end].value.c_str());
+    MYLOG("start[%d] = \"%s\" end[%d] = \"%s\" \n", start, tokenVector[start].value.c_str(), end, tokenVector[end].value.c_str());
     int cur = start;
 
     str += "<expressionList>\n";
@@ -396,9 +407,9 @@ int dealWithExpressionList(int start, int end, string& str) {
 }
 
 int dealWithTerm(int start, int end, string& str) {
+    MYLOG("start[%d] = \"%s\" end[%d] = \"%s\" \n", start, tokenVector[start].value.c_str(), end, tokenVector[end].value.c_str());
     int cur = start;
-    MYLOG("start = \"%s\" end = \"%s\" \n", tokenVector[start].value.c_str(), tokenVector[end].value.c_str());
-    
+
     str += "<term>\n";
 
     if ("integerConstant" == tokenVector[start].type
@@ -426,7 +437,7 @@ int dealWithTerm(int start, int end, string& str) {
             }
         }
     }
-    
+
     str += "</term>\n";
     return cur - start + 1;
 }
@@ -435,11 +446,10 @@ int dealWithTerm(int start, int end, string& str) {
 
 int dealWithExpression(int start, int end, string& str) {
     int cur = start;
+    MYLOG("start[%d] = \"%s\" end[%d] = \"%s\" \n", start, tokenVector[start].value.c_str(), end, tokenVector[end].value.c_str());
 
-    MYLOG("start = \"%s\" end = \"%s\" \n", tokenVector[start].value.c_str(), tokenVector[end].value.c_str());
-    
     str += "<expression>\n";
-    
+
     while(cur <= end) {
         int index = cur;
 
@@ -468,6 +478,7 @@ int dealWithExpression(int start, int end, string& str) {
 }
 
 int dealWithParamterList(int start, int end, string& str) {
+    MYLOG("start[%d] = \"%s\" end[%d] = \"%s\" \n", start, tokenVector[start].value.c_str(), end, tokenVector[end].value.c_str());
     MYLOG("start = \"%s\" end = \"%s\" \n", tokenVector[start].value.c_str(), tokenVector[end].value.c_str());
     int cur = start;
     if (start < end && "(" == tokenVector[start].value && ")" == tokenVector[end].value) {
@@ -487,8 +498,8 @@ int dealWithParamterList(int start, int end, string& str) {
 }
 
 int dealWithLet(int start, int end, string& str) {
+    MYLOG("start[%d] = \"%s\" end[%d] = \"%s\" \n", start, tokenVector[start].value.c_str(), end, tokenVector[end].value.c_str());
     int cur = start;
-    MYLOG("start = \"%s\" end = \"%s\" \n", tokenVector[start].value.c_str(), tokenVector[end].value.c_str());
 
     str += "<letStatement>\n";
 
@@ -512,7 +523,7 @@ int dealWithLet(int start, int end, string& str) {
             }
 
             str += createXml(tokenVector[index]);
-            
+
             dealWithExpression(index + 1, end - 1, str);
 
             str += createXml(tokenVector[end]);
@@ -526,7 +537,7 @@ int dealWithLet(int start, int end, string& str) {
 
 
 int dealWithWhile(int start, int end, string& str) {
-    MYLOG("start = \"%s\" end = \"%s\" \n", tokenVector[start].value.c_str(), tokenVector[end].value.c_str());
+    MYLOG("start[%d] = \"%s\" end[%d] = \"%s\" \n", start, tokenVector[start].value.c_str(), end, tokenVector[end].value.c_str());
     int cur = start;
     str += "<whileStatement>\n";
 
@@ -544,11 +555,12 @@ int dealWithWhile(int start, int end, string& str) {
         str += createXml(tokenVector[rightBracketIndex]);
 
         int leftBraceIndex = findFirstToken(rightBracketIndex+1, end, "{");
-        int rightBraceIndex = findFirstToken(rightBracketIndex+1, end, "}");
+        int rightBraceIndex = findMacthIndex(leftBraceIndex, end);
+        MYLOG("left %d  right %d\n", leftBraceIndex, rightBraceIndex);
         if (-1 != leftBracketIndex && -1 != rightBracketIndex) {
             str += createXml(tokenVector[leftBraceIndex]);
 
-            dealWithStatements(leftBraceIndex, rightBraceIndex, str);
+            dealWithStatements(leftBraceIndex + 1, rightBraceIndex - 1, str);
 
             str += createXml(tokenVector[rightBraceIndex]);
         }
@@ -560,8 +572,7 @@ int dealWithWhile(int start, int end, string& str) {
 
 
 int dealWithVarDec(int start, int end, string& str) {
-    MYLOG("start = \"%s\" end = \"%s\" \n", tokenVector[start].value.c_str(), tokenVector[end].value.c_str());
-
+    MYLOG("start[%d] = \"%s\" end[%d] = \"%s\" \n", start, tokenVector[start].value.c_str(), end, tokenVector[end].value.c_str());
     str += "<varDec>\n";
 
     if (end - start + 1 >= 4) {
@@ -588,14 +599,22 @@ int dealWithStatement(int start, int end, string& str) {
 }
 
 int dealWithStatements(int start, int end, string& str) {
-    MYLOG("start = \"%s\" end = \"%s\" \n", tokenVector[start].value.c_str(), tokenVector[end].value.c_str());
+    MYLOG("start[%d] = \"%s\" end[%d] = \"%s\" \n", start, tokenVector[start].value.c_str(), end, tokenVector[end].value.c_str());
     int cur = start;
 
     str += "<statements>\n";
 
     while (cur < end) {
         int semicolonIndex = findFirstToken(cur, end, ";");
-        int rightBrace = findFirstToken(cur, end, "}");
+        int leftBrace = findFirstToken(cur, end, "{");
+        MYLOG("leftBrace %d = %s\n", leftBrace, tokenVector[leftBrace].value.c_str());
+        int rightBrace = -1;
+
+        if (-1 != leftBrace) {
+            rightBrace = findMacthIndex(leftBrace, end);
+            MYLOG("rightBrace %d = %s\n", rightBrace, tokenVector[rightBrace].value.c_str());
+        }
+
         int index = end;
         if (-1 != semicolonIndex && -1 == rightBrace) {
             index = semicolonIndex;
@@ -604,19 +623,24 @@ int dealWithStatements(int start, int end, string& str) {
             index = rightBrace;
         }
         else if (-1 != semicolonIndex && -1 != rightBrace) {
-            index = MIN(semicolonIndex, rightBrace);
+            if (semicolonIndex < leftBrace) {
+                index = semicolonIndex;
+            }
+            else {
+               index = rightBrace;
+            }
         }
         MYLOG("cur = \"%s\" index = \"%s\" \n", tokenVector[cur].value.c_str(), tokenVector[index].value.c_str());
         cur += dealWithStatement(cur, index, str);
     }
 
     str += "</statements>\n";
-    
-    return cur - start + 1;
+
+    return end - start + 1;
 }
 
 int dealWithFunction(int start, int end, string& str) {
-    MYLOG("start = \"%s\" end = \"%s\" \n", tokenVector[start].value.c_str(), tokenVector[end].value.c_str());
+    MYLOG("start[%d] = \"%s\" end[%d] = \"%s\" \n", start, tokenVector[start].value.c_str(), end, tokenVector[end].value.c_str());
     int cur = start;
 
     if (end - start + 1 >= 7) {
@@ -650,7 +674,7 @@ int dealWithFunction(int start, int end, string& str) {
        }
 
        while(cur < end) {
-           cur += dealWithStatements(cur, end, str);
+           cur += dealWithStatements(cur, end - 1, str);
        }
 
        str += "</subroutineBody>\n";
@@ -658,13 +682,12 @@ int dealWithFunction(int start, int end, string& str) {
        str += createXml(tokenVector[end]);
     }
 
-
     return cur - start + 1;
 }
 
 
 void dealWithClass(int start, int end, string& str) {
-    MYLOG("start = \"%s\" end = \"%s\" \n", tokenVector[start].value.c_str(), tokenVector[end].value.c_str());
+    MYLOG("start[%d] = \"%s\" end[%d] = \"%s\" \n", start, tokenVector[start].value.c_str(), end, tokenVector[end].value.c_str());
     str += "<class>\n";
     if (end - start + 1 >= 4) {
         if ("{" == tokenVector[start+2].value && "}" == tokenVector[end].value) {
@@ -683,7 +706,6 @@ void dealWithClass(int start, int end, string& str) {
             }
 
             str += "<symbol>"+tokenVector[end].value+"</symbol>\n";
-
         }
     }
     str += "</class>\n";
@@ -760,10 +782,12 @@ int main(int argc, char *argv[])
 
 
     fseek(outputFile, 0, SEEK_SET);
+
+    int i = 0;
     while(readLine(outputFile, str) != -1) {
         string key, value;
         if(dealTheXml(str, key, value)) {
-            cout<<"k, v = "<<key<<"  "<<value<<endl;
+            cout<<"k, v, index = "<<key<<"  "<<value<<"  "<<i++<<endl;
             Token token;
             token.type = key;
             token.value = value;
